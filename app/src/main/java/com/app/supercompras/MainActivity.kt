@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -17,6 +18,7 @@ import com.app.supercompras.ui.theme.SuperComprasTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,7 +49,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import com.app.supercompras.ui.theme.Coral
@@ -81,7 +86,7 @@ fun ListaDeCompras(modifier: Modifier = Modifier, viewModel: ComprasViewModel) {
     LazyColumn(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
+        modifier = modifier.padding(horizontal = 16.dp)
     ) {
         item {
             LogoTopo()
@@ -92,7 +97,18 @@ fun ListaDeCompras(modifier: Modifier = Modifier, viewModel: ComprasViewModel) {
             Titulo(
                 texto = "Lista de Compras",
             )
+            Spacer(modifier = Modifier.height(24.dp))
         }
+
+        if(listaDeItens.isEmpty()){
+            item{
+                Text(
+                    text = "Sua lista está vazia. Adicione itens a ela para não esquecer nada na próxima compra!",
+                    style = Typography.bodyLarge
+                )
+            }
+        }
+
         ListaDeItems(
             lista = listaDeItens.filter { !it.foiComprado },
             aoMudarStatus = { itemSelecionado ->
@@ -106,11 +122,13 @@ fun ListaDeCompras(modifier: Modifier = Modifier, viewModel: ComprasViewModel) {
             }
         )
 
-        item {
-            Titulo(texto = "Comprados")
-        }
-
         if (listaDeItens.any { it.foiComprado }) {
+            item {
+                Spacer(modifier = Modifier.height(40.dp))
+                Titulo(texto = "Comprados")
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             ListaDeItems(
                 lista = listaDeItens.filter { it.foiComprado },
                 aoMudarStatus = { itemSelecionado ->
@@ -172,13 +190,13 @@ fun AdicionarItem(onSalvarItem: (item: ItemCompra) -> Unit, modifier: Modifier =
             onSalvarItem(ItemCompra(texto, false, getDataHora()))
             texto = ""
         },
-        modifier = modifier
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp, 12.dp)
     ) {
         Text(
             text = "Salvar item",
             color = Color.White,
             style = Typography.bodyLarge,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         )
     }
 }
@@ -191,7 +209,28 @@ fun getDataHora(): String {
 
 @Composable
 fun Titulo(texto: String, modifier: Modifier = Modifier) {
-    Text(text = texto, modifier = modifier, style = Typography.headlineLarge)
+    Text(
+        text = texto,
+        modifier = modifier.padding(bottom = 8.dp).fillMaxWidth(),
+        style = Typography.headlineLarge,
+        textAlign = TextAlign.Left
+    )
+
+    LinhaPontilhada(modifier = modifier)
+}
+
+@Composable
+fun LinhaPontilhada(modifier: Modifier = Modifier) {
+    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 2.5f)
+    Canvas(modifier = modifier.fillMaxWidth()){
+        drawLine(
+            color = Coral,
+            pathEffect = pathEffect,
+            start = Offset(0f, 0f),
+            end = Offset(size.width, 0f),
+            strokeWidth = 4f
+        )
+    }
 }
 
 @Composable
@@ -254,23 +293,23 @@ fun ItemDaLista(
                 onClick = { aoRemoverItem(item) },
                 modifier = Modifier
                     .padding(end = 8.dp)
+                    .size(16.dp)
             ) {
                 Icone(
                     Icons.Default.Delete,
                     modifier = Modifier
-                        .size(16.dp)
                 )
             }
 
             IconButton(
                 onClick = {
                     edicao = true
-                }
+                },
+                modifier = Modifier.size(16.dp)
             ) {
                 Icone(
                     Icons.Default.Edit,
                     modifier = Modifier
-                        .size(16.dp)
                 )
             }
         }
