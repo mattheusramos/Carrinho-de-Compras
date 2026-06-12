@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.ui.unit.dp
@@ -37,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,13 +58,16 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+
+    val viewModel: ComprasViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SuperComprasTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ListaDeCompras(Modifier.padding(innerPadding))
+                    ListaDeCompras(Modifier.padding(innerPadding), viewModel)
                 }
             }
         }
@@ -68,94 +75,71 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ListaDeCompras(modifier: Modifier = Modifier) {
-    var listaDeItens by rememberSaveable() { mutableStateOf(listOf<ItemCompra>()) }
+fun ListaDeCompras(modifier: Modifier = Modifier, viewModel: ComprasViewModel) {
+    val listaDeItens by viewModel.listaDeItens.collectAsState()
 
-    Column(
+    LazyColumn(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
     ) {
-        LogoTopo()
-        AdicionarItem(onSalvarItem = { novoItem ->
-            listaDeItens = listaDeItens + novoItem
-        })
-        Spacer(modifier = Modifier.height(48.dp))
-        Titulo(
-            texto = "Lista de Compras",
-        )
+        item {
+            LogoTopo()
+            AdicionarItem(onSalvarItem = { novoItem ->
+                viewModel.adicionarItem(novoItem)
+            })
+            Spacer(modifier = Modifier.height(48.dp))
+            Titulo(
+                texto = "Lista de Compras",
+            )
+        }
         ListaDeItems(
             lista = listaDeItens.filter { !it.foiComprado },
             aoMudarStatus = { itemSelecionado ->
-                listaDeItens = listaDeItens.map { itemMap ->
-                    if (itemSelecionado == itemMap) {
-                        itemSelecionado.copy(foiComprado = !itemSelecionado.foiComprado)
-                    } else {
-                        itemMap
-                    }
-                }
+                viewModel.mudarStatus(itemSelecionado)
             },
             aoRemoverItem = { itemRemovido ->
-                listaDeItens = listaDeItens - itemRemovido
+                viewModel.removerItem(itemRemovido)
             },
             aoEditarItem = { itemEditado, novoTexto ->
-                listaDeItens = listaDeItens.map { itemAtual ->
-                    if (itemAtual == itemEditado) {
-                        itemAtual.copy(texto = novoTexto)
-                    } else {
-                        itemAtual
-                    }
-                }
+                viewModel.editarItem(itemEditado, novoTexto)
             }
         )
-        Titulo(texto = "Comprados")
+
+        item {
+            Titulo(texto = "Comprados")
+        }
 
         if (listaDeItens.any { it.foiComprado }) {
             ListaDeItems(
                 lista = listaDeItens.filter { it.foiComprado },
                 aoMudarStatus = { itemSelecionado ->
-                    listaDeItens = listaDeItens.map { itemMap ->
-                        if (itemSelecionado == itemMap) {
-                            itemSelecionado.copy(foiComprado = !itemSelecionado.foiComprado)
-                        } else {
-                            itemMap
-                        }
-                    }
+                    viewModel.mudarStatus(itemSelecionado)
                 },
                 aoRemoverItem = { itemRemovido ->
-                    listaDeItens = listaDeItens - itemRemovido
+                    viewModel.removerItem(itemRemovido)
                 },
                 aoEditarItem = { itemEditado, novoTexto ->
-                    listaDeItens = listaDeItens.map { itemAtual ->
-                        if (itemAtual == itemEditado) {
-                            itemAtual.copy(texto = novoTexto)
-                        } else {
-                            itemAtual
-                        }
-                    }
+                    viewModel.editarItem(itemEditado, novoTexto)
                 }
             )
         }
     }
 }
 
-@Composable
-fun ListaDeItems(
+fun LazyListScope.ListaDeItems(
     lista: List<ItemCompra>,
     aoMudarStatus: (item: ItemCompra) -> Unit,
-    aoEditarItem: (item: ItemCompra, novoTexto: String) -> Unit = {_, _ ->},
+    aoEditarItem: (item: ItemCompra, novoTexto: String) -> Unit = { _, _ -> },
     aoRemoverItem: (item: ItemCompra) -> Unit,
-    modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
-        lista.forEach { item ->
-            ItemDaLista(
-                item,
-                aoMudarStatus = aoMudarStatus,
-                aoRemoverItem = aoRemoverItem,
-                aoEditarItem = aoEditarItem
-            )
-        }
+    items(lista.size) { index ->
+        ItemDaLista(
+            item = lista[index],
+            aoMudarStatus = aoMudarStatus,
+            aoRemoverItem = aoRemoverItem,
+            aoEditarItem = aoEditarItem
+        )
     }
 }
 
@@ -215,7 +199,7 @@ fun ItemDaLista(
     item: ItemCompra,
     aoMudarStatus: (item: ItemCompra) -> Unit = {},
     aoRemoverItem: (item: ItemCompra) -> Unit = {},
-    aoEditarItem: (item: ItemCompra, novoTexto: String) -> Unit = { _, _ ->},
+    aoEditarItem: (item: ItemCompra, novoTexto: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     Column(verticalArrangement = Arrangement.Top, modifier = modifier) {
